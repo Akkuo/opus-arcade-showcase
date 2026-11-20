@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claude Opus 5.5 — 2D × 3D 網頁遊戲實測展間</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 16% 10%, rgba(58, 214, 255, 0.13), transparent 40%),
+          radial-gradient(circle at 84% 16%, rgba(255, 181, 71, 0.12), transparent 42%),
+          radial-gradient(circle at 50% 92%, rgba(123, 227, 107, 0.1), transparent 45%),
+          #070a12;
+        color: #eaf0ff;
+        font-family: 'Noto Sans TC', 'Microsoft JhengHei', ui-sans-serif, system-ui, sans-serif;
+        line-height: 1.65;
+        padding: 32px 18px 64px;
+      }
+      .wrap { max-width: 1480px; margin: 0 auto; }
+      header { text-align: center; margin-bottom: 36px; }
+      .eyebrow {
+        display: inline-block; padding: 4px 12px; border-radius: 999px;
+        font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+        color: #ffd9a8; background: rgba(255, 170, 90, 0.12); border: 1px solid rgba(255, 170, 90, 0.38);
+        margin-bottom: 12px;
+      }
+      h1 {
+        font-size: clamp(28px, 4.4vw, 46px); font-weight: 900; letter-spacing: -0.02em;
+        background: linear-gradient(90deg, #ffb98a 0%, #7ee0ff 50%, #b8ff9a 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+        margin-bottom: 10px;
+      }
+      .subtitle { max-width: 760px; margin: 0 auto; color: #a9b8d9; font-size: 15px; }
+      .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin-bottom: 42px; }
+      @media (max-width: 1180px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+      .card {
+        --a: #3ad6ff; --b: #2a7fff;
+        display: flex; flex-direction: column; border-radius: 18px; overflow: hidden;
+        background: rgba(14, 19, 34, 0.84); border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 24px 56px rgba(0, 0, 0, 0.55);
+        transition: transform 0.22s ease, border-color 0.22s ease;
+      }
+      .card:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--a) 65%, transparent); }
+      .cover { position: relative; aspect-ratio: 16 / 9; background: #000; }
+      .cover canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+      .cover.smooth canvas { image-rendering: auto; }
+      .badge {
+        position: absolute; top: 12px; left: 12px; padding: 3px 10px; border-radius: 999px;
+        font-size: 11.5px; font-weight: 800; color: #fff;
+        background: rgba(5, 8, 16, 0.72); border: 1px solid rgba(255, 255, 255, 0.28); backdrop-filter: blur(4px);
+      }
+      .card-body { display: flex; flex-direction: column; flex: 1; padding: 18px 18px 18px; }
+      h2 { font-size: 19px; font-weight: 900; letter-spacing: 0.01em; line-height: 1.25; margin-bottom: 10px; }
+      h2 span { display: block; margin-top: 4px; font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--a) 70%, #c8d4f0); }
+      .desc { font-size: 13.5px; color: #c4cee6; margin-bottom: 14px; }
+      .desc b { color: #fff; }
+      .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+      .tags span {
+        font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 8px;
+        color: #e6ecff; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .controls-box {
+        font-size: 12.5px; color: #b7c3e0; padding: 12px 14px; border-radius: 12px;
+        background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 16px;
+      }
+      .controls-box b { color: #fff; }
+      kbd {
+        display: inline-block; min-width: 20px; padding: 0 5px; margin: 1px 1px; text-align: center;
+        font: 700 11px/18px ui-monospace, Consolas, monospace; color: #fff;
+        background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.25); border-bottom-width: 2px; border-radius: 4px;
+      }
+      .actions { display: flex; gap: 10px; margin-top: auto; }
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center; padding: 11px 14px; border-radius: 12px;
+        font-weight: 800; font-size: 14px; text-decoration: none; transition: filter 0.15s ease, transform 0.15s ease;
+      }
+      .btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+      .btn.play { flex: 1; color: #07101c; background: linear-gradient(90deg, var(--a), var(--b)); }
+      .btn.gh { color: #e8eeff; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.18); }
+      .story {
+        border-radius: 18px; padding: 26px 24px; margin-bottom: 30px;
+        background: rgba(14, 19, 34, 0.8); border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .story h3 { font-size: 20px; font-weight: 900; margin-bottom: 18px; }
+      .story-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+      @media (max-width: 760px) { .story-grid { grid-template-columns: 1fr; } }
+      .story-item { padding: 16px 18px; border-radius: 14px; background: rgba(255, 255, 255, 0.035); border: 1px solid rgba(255, 255, 255, 0.07); }
+      .story-item h4 { font-size: 15px; font-weight: 800; color: #ffd9a8; margin-bottom: 6px; }
+      .story-item p { font-size: 13.5px; color: #c4cee6; }
+      footer { text-align: center; font-size: 12.5px; color: #7d8bab; }
+      footer a { color: #a9b8d9; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">CLAUDE OPUS 5.5 BENCHMARK • CANVAS 2D • PIXI.JS v8 • THREE.JS 3D • CANNON-ES PHYSICS</div>
+        <h1>Claude Opus 5.5 2D × 3D 網頁遊戲實測展間</h1>
+        <p class="subtitle">
+          以 8 款可立即遊玩的原創 2D / 3D 網頁遊戲，實測 AI 模型在程式生成、渲染管線、物理模擬與自動化驗證上的極限
+          ——全站零外部美術與音效素材檔，支援桌面與手機瀏覽器直接試玩。
+        </p>
+      </header>
+
+      <section class="grid" id="grid"></section>
+
+      <section class="story">
+        <h3>AI 協作開發歷程與四大引擎路線實戰亮點（Claude Opus 5.5）</h3>
+        <div class="story-grid" id="story"></div>
+      </section>
+
+      <footer>
+        Built with Vanilla Canvas 2D, PixiJS v8, Three.js, cannon-es &amp; Web Audio API • Zero External Art/Audio Asset Files
+        • 對照組：<a href="https://akkuo.github.io/pixel-arcade-showcase/">Gemini 4 Neon 版展間</a>
+      </footer>
+    </div>
+
+    <script>
+      // ── 卡片資料（文案依各款開發記錄撰寫）──
+      const GAMES = [
+        {
+          id: 'tidekeeper', a: '#3ad6ff', b: '#2a7fff', badge: '橫向平台動作 • 6 大潮汐關卡', pixel: true,
+          title: 'TIDEKEEPER', sub: '潮汐守望者',
+          desc: '原生 Canvas 2D 橫向平台動作。按 <b>Q 切換滿潮／乾潮</b>，整關水位隨之升降：滿潮游泳、乾潮露出海床，站在水中切潮汐還能被水位抬升，是主要的解謎手段。',
+          tags: ['潮汐切換水位', 'WebGL 水下折射後處理', 'F2 關卡編輯器', 'Ghost 殘影', '手機觸控'],
+          controls: '<kbd>A</kbd><kbd>D</kbd> 移動・<kbd>Space</kbd> 跳躍・<kbd>Q</kbd> 切換潮汐・<kbd>X</kbd> 三叉戟突刺・<kbd>↓</kbd> 下潛・<kbd>1-6</kbd> 選關・<kbd>F2</kbd> 編輯器・<kbd>V</kbd> 後處理',
+        },
+        {
+          id: 'tidekeeper-pixi', a: '#7c6cff', b: '#3ad6ff', badge: 'PixiJS v8 GPU 引擎 • 折射與震波', pixel: true,
+          title: 'TIDEKEEPER', sub: 'PixiJS v8 版',
+          desc: '與原版逐位元組共用 <b>src/core</b> 遊戲邏輯，只把渲染層換成 PixiJS v8：DisplacementFilter 水下折射、自寫光束與潮汐震波 Filter、Sprite Pooling，可直接與原版同源對照。',
+          tags: ['PixiJS v8 WebGL', '共用核心邏輯', 'Displacement 折射', '震波 Filter', 'GPU 遙測 HUD'],
+          controls: '<b>與原版完全一致</b>・<kbd>G</kbd> 即時開關 Filter 對照・<kbd>Q</kbd> 切換潮汐（觸發震波）',
+        },
+        {
+          id: 'lantern-hollow', a: '#ffb547', b: '#ff7a3d', badge: '俯視動作冒險 • 10 房間與光影謎題', pixel: true,
+          title: 'LANTERN HOLLOW', sub: '燈籠谷',
+          desc: '原生 Canvas 2D 俯視冒險。永夜山谷裡，<b>光晶橋只在靜止的光中凝結</b>，影獸也只在光裡才會受傷——放下燈籠才能過橋，卻得獨自走進黑暗；推鏡子折射日光開門，最後引誘蝕影蛾后。',
+          tags: ['燈籠光影雙態', '鏡面光束謎題', '鉤索・鏡盾・炸藥果', '迷你地圖與存檔', '手機觸控'],
+          controls: '<kbd>WASD</kbd> 移動・<kbd>Space</kbd> 揮劍（長按迴旋）・<kbd>Shift</kbd> 翻滾・<kbd>E</kbd> 放下／撿回燈籠・<kbd>Q</kbd> 切換道具・<kbd>F</kbd> 使用・<kbd>Tab</kbd> 地圖',
+        },
+        {
+          id: 'lantern-hollow-pixi', a: '#ff7a3d', b: '#c86bff', badge: 'PixiJS v8 GPU 引擎 • 動態光照', pixel: true,
+          title: 'LANTERN HOLLOW', sub: 'PixiJS v8 版',
+          desc: '與原版逐位元組共用 <b>src/core</b>，渲染改為 PixiJS v8：<b>暗幕 RenderTexture + ERASE 光源</b>、流動霧氣、旋轉的燈籠光芒、炸藥震波與光束 GLSL Filter，全面 Sprite Pooling。',
+          tags: ['PixiJS v8 WebGL', '暗幕動態光照', '共用核心邏輯', '自寫 GLSL Filter', 'GPU 遙測 HUD'],
+          controls: '<b>與原版完全一致</b>・<kbd>G</kbd> 即時開關 Filter 對照',
+        },
+        {
+          id: 'skyseed', a: '#d6ff6b', b: '#7affc8', badge: 'Three.js 3D 滑翔 • 無限地形', pixel: false,
+          title: 'SKYSEED', sub: '種子遠航 3D',
+          desc: '化身一顆蒲公英種子乘風滑翔。<b>金色上升氣流與光絲風帶</b>提供升力，俯衝到發光沃土上種出整片花海；無限地形依草原、河谷、舊城屋頂、秋林、雪嶺循環，伴隨日夜與陣雨。',
+          tags: ['Three.js 無限分塊地形', '氣流與風帶物理', '5 種生態循環', '日夜與陣雨', '3 種視角・防暈'],
+          controls: '<kbd>A</kbd><kbd>D</kbd> 轉向・<kbd>W</kbd><kbd>S</kbd> 俯仰・<kbd>Space</kbd> 張傘・<kbd>Shift</kbd> 俯衝・<kbd>C</kbd> 切換視角・<kbd>M</kbd> 靜音',
+        },
+        {
+          id: 'topple-works', a: '#ff5fa2', b: '#ffb36b', badge: 'Three.js + cannon-es • 物理倒塌', pixel: false,
+          title: 'TOPPLE WORKS', sub: '傾倒工坊 3D',
+          desc: '單一 HTML 的 3D 物理倒塌解謎。木、石、玻璃、金屬各有質量與摩擦，<b>玻璃受到足夠衝量就碎裂</b>；用擺錘、彈弓、磁鐵、風扇與黏性炸藥把金星擊落平台。',
+          tags: ['單檔 HTML 零素材', '玻璃碎裂', '擺錘鏈條約束', '布娃娃假人', '挑戰 8 關 + 沙盒'],
+          controls: '<kbd>1-5</kbd> 工具・<b>左鍵</b> 使用・<b>右鍵拖曳</b> 環繞・<kbd>F</kbd> 引爆・<kbd>Space</kbd> 慢動作・<kbd>G</kbd> 重力・<kbd>R</kbd> 重置',
+        },
+        {
+          id: 'terrace-bloom', a: '#7be36b', b: '#3fbf8f', badge: 'Three.js 第一人稱 • 梯田修復', pixel: false,
+          title: 'TERRACE BLOOM', sub: '梯田復甦 3D',
+          desc: '單一 HTML 的第一人稱修復遊戲。清除雜草、補回崩塌石牆，<b>鋪竹管與水閘把山泉導向每層梯田</b>；有水的田轉綠、作物生長、青蛙與螢火蟲回歸，修復到 100% 迎來燈籠祭。',
+          tags: ['第一人稱 3D 行走', '導水路線解謎', '作物生長與生態回歸', '日夜與雨天', '單檔 HTML 零素材'],
+          controls: '<kbd>WASD</kbd> 移動・<b>滑鼠</b> 視角・<b>左鍵</b> 使用（長按清草）・<kbd>E</kbd> 互動／水閘・<kbd>1-4</kbd> 工具・<kbd>Shift</kbd> 跑',
+        },
+        {
+          id: 'frosthold', a: '#8fe3ff', b: '#c7b6ff', badge: 'Three.js 第一人稱 • 體素凍原生存', pixel: true,
+          title: 'FROSTHOLD', sub: '凍土方塊 3D',
+          desc: '單一 HTML 的體素生存。<b>體溫在戶外持續下降</b>，要靠營火與有屋頂的庇護所取暖；採集合成到鐵器、鑿冰釣魚、躲避夜間狼群，撐過 5 夜點燃烽火台。',
+          tags: ['程序化 16×16 材質圖集', '體溫與飢餓', '暴風雪與日夜', '合成鏈與冰釣', '單檔 HTML 零素材'],
+          controls: '<kbd>WASD</kbd> 移動・<b>左鍵</b> 破壞・<b>右鍵</b> 放置・<kbd>Space</kbd> 跳・<kbd>1-9</kbd> 快捷列・<kbd>E</kbd> 背包合成・<kbd>P</kbd> 暫停',
+        },
+      ];
+
+      const STORY = [
+        { h: '1. 原生 Canvas 2D vs PixiJS v8 同源對照', p: '兩款 2D 作品先把遊戲邏輯寫成不碰繪圖的 src/core，Pixi 版逐位元組複製（SHA-256 比對一致），只換渲染層。《潮汐守望者》6 關的逐幀通關路線在兩版重播，結束幀與座標完全相同；Pixi 版則靠「先畫進低解析度 RenderTexture 再放大」把軟體渲染從 34–40 FPS 拉回 56–60。' },
+        { h: '2. 四種截然不同的 Three.js 3D 實測', p: '涵蓋無限分塊地形的氣流滑翔（《種子遠航》）、cannon-es 玻璃碎裂與布娃娃（《傾倒工坊》）、第一人稱導水修復（《梯田復甦》）與體素凍原生存（《凍土方塊》），全皆零外部素材檔。長骨牌列在 cannon-es 下會滑移停住，最後改從關卡設計解決，不再硬調物理。' },
+        { h: '3. 用腳本與跨模型審查取代第一輪試玩', p: '每款都以 headless Edge 自動截圖、讀 console、模擬按鍵；平台關卡用 beam search 搜出通關序列來證明可解，順帶抓到「突刺速度不歸位」的速通 bug。Codex 交叉審查找出 Opus 自測漏掉的魔王房卡關——原驗證直接傳送進房，沒走過那道門。' },
+        { h: '4. Claude Opus 5.5 實戰體感觀察', p: '強項是從規格、渲染、物理、音效合成到自我驗證一路打通，並主動記下自己做錯的地方；弱點是驗證容易走捷徑（傳送、除錯介面），手感數值也需要再調（滑翔落地後會連撞致死）。8 款的實作子任務全部超出原訂 150k token 預算（約 200k–250k）——人類試玩仍是最後一道把關。' },
+      ];
+
+      const grid = document.getElementById('grid');
+      for (const g of GAMES) {
+        const el = document.createElement('article');
+        el.className = 'card';
+        el.style.setProperty('--a', g.a);
+        el.style.setProperty('--b', g.b);
+        el.innerHTML = `
+          <div class="cover${g.pixel ? '' : ' smooth'}">
+            <canvas id="cover-${g.id}" width="320" height="180"></canvas>
+            <div class="badge">${g.badge}</div>
+          </div>
+          <div class="card-body">
+            <h2>${g.title}<span>${g.sub}</span></h2>
+            <p class="desc">${g.desc}</p>
+            <div class="tags">${g.tags.map((t) => `<span>${t}</span>`).join('')}</div>
+            <div class="controls-box"><b>操作說明：</b>${g.controls}</div>
+            <div class="actions">
+              <a class="btn play" href="https://akkuo.github.io/${g.id}/" target="_blank" rel="noopener">▶ 立即遊玩</a>
+              <a class="btn gh" href="https://github.com/Akkuo/${g.id}" target="_blank" rel="noopener">GitHub</a>
+            </div>
+          </div>`;
+        grid.appendChild(el);
+      }
+      document.getElementById('story').innerHTML = STORY.map((s) => `<div class="story-item"><h4>${s.h}</h4><p>${s.p}</p></div>`).join('');
+
+      // ── 動態封面：全部程式繪製，零外部素材 ──
+      const ctx = {};
+      for (const g of GAMES) {
+        ctx[g.id] = document.getElementById('cover-' + g.id).getContext('2d');
+        ctx[g.id].imageSmoothingEnabled = !g.pixel;
+      }
+      const W = 320, H = 180, TAU = Math.PI * 2;
+      const rect = (c, col, x, y, w, h) => { c.fillStyle = col; c.fillRect(Math.floor(x), Math.floor(y), w, h); };
+      const label = (c, col, text) => { c.fillStyle = col; c.font = 'bold 10px monospace'; c.fillText(text, 14, 168); };
+      const vgrad = (c, stops) => { const g = c.createLinearGradient(0, 0, 0, H); stops.forEach((s, i) => g.addColorStop(i / (stops.length - 1), s)); return g; };
+
+      // 1. TIDEKEEPER：水位在滿潮／乾潮間切換
+      function drawTide(t) {
+        const c = ctx['tidekeeper'];
+        const high = Math.floor(t / 3) % 2 === 0;
+        const k = Math.min(1, (t % 3) / 0.6);
+        const from = high ? 132 : 82, to = high ? 82 : 132;
+        const water = from + (to - from) * (k * k * (3 - 2 * k));
+        c.fillStyle = vgrad(c, ['#0b2547', '#1d5b8a', '#f2b46b']);
+        c.fillRect(0, 0, W, H);
+        rect(c, '#fff4c4', 250, 30, 18, 18);
+        // 礁岩與平台
+        rect(c, '#2c3a52', 0, 140, W, 40);
+        for (let i = 0; i < 5; i++) rect(c, '#3b4c69', 20 + i * 66, 112 - (i % 2) * 18, 40, 8);
+        rect(c, '#e0566b', 200, 128, 6, 12); rect(c, '#e0566b', 196, 132, 14, 4);
+        // 水體
+        c.fillStyle = 'rgba(40,170,230,0.55)';
+        c.fillRect(0, water, W, H - water);
+        rect(c, '#9ff0ff', 0, water, W, 2);
+        for (let x = 0; x < W; x += 16) rect(c, '#d8fbff', x + ((t * 30) % 16), water + 1 + Math.sin(x + t * 4), 6, 1);
+        // 騎士
+        const kx = 70, ky = Math.min(water - 18, 122) + Math.sin(t * 5) * 1.5;
+        rect(c, '#e9f1ff', kx, ky, 10, 9); rect(c, '#3ad6ff', kx + 3, ky + 3, 6, 2);
+        rect(c, '#24406e', kx + 1, ky + 9, 8, 9);
+        rect(c, '#ffd36b', kx + 11, ky + 6, 14, 2); rect(c, '#ffd36b', kx + 24, ky + 4, 2, 6);
+        for (let i = 0; i < 6; i++) { const by = (H - ((t * 24 + i * 31) % (H - water))); if (by > water) rect(c, '#bff6ff', 40 + i * 47, by, 2, 2); }
+        label(c, high ? '#9ff0ff' : '#ffd9a0', high ? 'HIGH TIDE • SWIM PHYSICS' : 'LOW TIDE • SEABED REVEALED');
+      }
+
+      // 2. TIDEKEEPER Pixi：光束、氣泡池、震波環
+      function drawTidePixi(t) {
+        const c = ctx['tidekeeper-pixi'];
+        c.fillStyle = vgrad(c, ['#0a1f4a', '#0b3466', '#06142e']);
+        c.fillRect(0, 0, W, H);
+        c.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 4; i++) {
+          const x = 60 + i * 70 + Math.sin(t * 0.7 + i) * 10;
+          c.fillStyle = 'rgba(124,108,255,0.10)';
+          c.beginPath(); c.moveTo(x - 8, 0); c.lineTo(x + 8, 0); c.lineTo(x + 40, 150); c.lineTo(x - 4, 150); c.fill();
+        }
+        const r = (t % 2) * 90;
+        c.strokeStyle = `rgba(58,214,255,${Math.max(0, 1 - r / 90)})`; c.lineWidth = 3;
+        c.beginPath(); c.arc(160, 96, r, 0, TAU); c.stroke();
+        c.globalCompositeOperation = 'source-over';
+        for (let i = 0; i < 18; i++) {
+          const y = 150 - ((t * (18 + i) + i * 23) % 150);
+          rect(c, 'rgba(190,240,255,0.8)', (i * 53 + Math.sin(t * 2 + i) * 6) % W, y, 2, 2);
+        }
+        rect(c, '#e9f1ff', 154, 90, 10, 9); rect(c, '#7c6cff', 157, 93, 6, 2); rect(c, '#24406e', 155, 99, 8, 9);
+        rect(c, '#1a2c55', 0, 150, W, 30);
+        label(c, '#b9b0ff', 'PIXI.JS v8 • DISPLACEMENT + SHOCKWAVE');
+      }
+
+      // 3. LANTERN HOLLOW：黑暗中移動的燈籠照出光晶橋
+      function drawLantern(t) {
+        const c = ctx['lantern-hollow'];
+        for (let y = 0; y < 150; y += 16) for (let x = 0; x < W; x += 16) rect(c, (x + y) % 32 ? '#3a5a3a' : '#355335', x, y, 16, 16);
+        rect(c, '#14202b', 120, 0, 80, 150);
+        const lx = 160 + Math.sin(t * 0.9) * 110, ly = 70 + Math.sin(t * 1.7) * 30;
+        const lit = Math.abs(lx - 160) < 60;
+        if (lit) for (let x = 120; x < 200; x += 16) { rect(c, '#9ff7ff', x, 64, 15, 14); rect(c, '#d9ffff', x + 3, 67, 6, 3); }
+        rect(c, '#6d5a3a', 40, 30, 16, 16); rect(c, '#6d5a3a', 260, 100, 16, 16);
+        rect(c, '#1b0f2a', 230, 40, 14, 12); rect(c, '#ff4f8a', 233, 43, 3, 3); rect(c, '#ff4f8a', 239, 43, 3, 3);
+        // 暗幕
+        const g = c.createRadialGradient(lx, ly, 6, lx, ly, 70);
+        g.addColorStop(0, 'rgba(5,4,12,0)'); g.addColorStop(0.65, 'rgba(5,4,12,0.35)'); g.addColorStop(1, 'rgba(5,4,12,0.9)');
+        c.fillStyle = g; c.fillRect(0, 0, W, 150);
+        rect(c, '#2a6b3c', lx - 5, ly + 6, 10, 10); rect(c, '#f2c79a', lx - 3, ly + 1, 6, 6);
+        rect(c, '#ffb547', lx + 7, ly + 2 + Math.sin(t * 8), 5, 7);
+        rect(c, '#140f1c', 0, 150, W, 30);
+        label(c, '#ffcf8a', lit ? 'LIGHT • CRYSTAL BRIDGE SOLID' : 'SHADOW • BRIDGE FADES');
+      }
+
+      // 4. LANTERN HOLLOW Pixi：多光源加法混合
+      function drawLanternPixi(t) {
+        const c = ctx['lantern-hollow-pixi'];
+        for (let y = 0; y < 150; y += 16) for (let x = 0; x < W; x += 16) rect(c, (x + y) % 32 ? '#262a3a' : '#22263a', x, y, 16, 16);
+        c.fillStyle = 'rgba(4,3,10,0.82)'; c.fillRect(0, 0, W, 150);
+        c.globalCompositeOperation = 'lighter';
+        const lights = [['255,122,61', 70, 60], ['200,107,255', 250, 50], ['255,200,90', 160, 100]];
+        lights.forEach(([col, x, y], i) => {
+          const px = x + Math.sin(t * (0.8 + i * 0.3) + i) * 22, py = y + Math.cos(t * (0.9 + i * 0.2)) * 14;
+          const g = c.createRadialGradient(px, py, 2, px, py, 60 + Math.sin(t * 6 + i) * 4);
+          g.addColorStop(0, `rgba(${col},0.75)`); g.addColorStop(1, `rgba(${col},0)`);
+          c.fillStyle = g; c.fillRect(px - 70, py - 70, 140, 140);
+          rect(c, `rgb(${col})`, px - 2, py - 3, 5, 7);
+        });
+        c.globalCompositeOperation = 'source-over';
+        rect(c, '#140f1c', 0, 150, W, 30);
+        label(c, '#e0b8ff', 'PIXI.JS v8 • DYNAMIC MULTI-LIGHT');
+      }
+
+      // 5. SKYSEED：蒲公英種子在氣流中漂流
+      function drawSky(t) {
+        const c = ctx['skyseed'];
+        const day = (Math.sin(t * 0.25) + 1) / 2;
+        c.fillStyle = vgrad(c, [day > 0.5 ? '#7cc7ff' : '#2c2f6b', day > 0.5 ? '#c9ecff' : '#f2a07a']);
+        c.fillRect(0, 0, W, H);
+        for (let layer = 0; layer < 3; layer++) {
+          c.fillStyle = ['#9bd48a', '#6fbf6a', '#4b9a55'][layer];
+          c.beginPath(); c.moveTo(0, H);
+          for (let x = 0; x <= W; x += 8) c.lineTo(x, 110 + layer * 18 + Math.sin((x + t * (12 + layer * 14)) * 0.025 + layer) * (14 - layer * 3));
+          c.lineTo(W, H); c.fill();
+        }
+        // 上升氣流
+        c.globalAlpha = 0.35;
+        for (let i = 0; i < 10; i++) { const y = 140 - ((t * 40 + i * 15) % 120); rect(c, '#fffbe0', 220 + Math.sin(y * 0.1 + t * 3) * 6, y, 2, 8); }
+        c.globalAlpha = 1;
+        // 種子
+        const sx = 120 + Math.sin(t * 0.8) * 30, sy = 70 + Math.sin(t * 1.3) * 16;
+        c.strokeStyle = '#ffffff'; c.lineWidth = 1;
+        for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU + t * 0.5; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + Math.cos(a) * 12, sy - 6 + Math.sin(a) * 5); c.stroke(); }
+        c.strokeStyle = '#e8e2c8'; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx, sy + 12); c.stroke();
+        c.fillStyle = '#8a6a3a'; c.fillRect(sx - 1, sy + 12, 3, 4);
+        for (let i = 0; i < 7; i++) rect(c, ['#ffd84f', '#ff8fb8', '#ffffff'][i % 3], 30 + i * 14, 134 + (i % 2) * 3, 4, 4);
+        label(c, '#16324a', 'THREE.JS 3D • THERMAL GLIDE & BLOOM');
+      }
+
+      // 6. TOPPLE WORKS：擺錘撞倒方塊塔
+      function drawTopple(t) {
+        const c = ctx['topple-works'];
+        c.fillStyle = vgrad(c, ['#2a1630', '#3a1c34', '#120a14']);
+        c.fillRect(0, 0, W, H);
+        rect(c, '#3b2a33', 0, 148, W, 32);
+        const cyc = t % 5;
+        const ang = cyc < 1.2 ? -1.0 + cyc * 1.05 : 0.26 * Math.cos((cyc - 1.2) * 3) * Math.exp(-(cyc - 1.2));
+        const px = 110, py = 10, len = 100;
+        const bx = px + Math.sin(ang) * len, by = py + Math.cos(ang) * len;
+        c.strokeStyle = '#9aa0ad'; c.lineWidth = 2; c.beginPath(); c.moveTo(px, py); c.lineTo(bx, by); c.stroke();
+        c.fillStyle = '#5b6170'; c.beginPath(); c.arc(bx, by, 13, 0, TAU); c.fill();
+        c.fillStyle = '#8b92a3'; c.beginPath(); c.arc(bx - 4, by - 4, 4, 0, TAU); c.fill();
+        const hit = cyc > 1.15;
+        const mats = ['#c98a4b', '#9aa4b5', 'rgba(170,230,255,0.6)', '#c98a4b', '#9aa4b5'];
+        for (let i = 0; i < 5; i++) {
+          const fall = hit ? Math.min(1, (cyc - 1.15) * (1.4 - i * 0.12)) : 0;
+          const x = 150 + fall * (40 + i * 18), y = 128 - i * 20 + fall * fall * i * 20;
+          c.save(); c.translate(x + 15, y + 9); c.rotate(fall * (0.6 + i * 0.25));
+          c.fillStyle = mats[i]; c.fillRect(-15, -9, 30, 18);
+          c.strokeStyle = 'rgba(0,0,0,0.35)'; c.strokeRect(-15, -9, 30, 18);
+          c.restore();
+        }
+        const sy = 128 - 5 * 20 + (hit ? Math.min(60, (cyc - 1.15) ** 2 * 80) : 0);
+        c.fillStyle = '#ffd34f';
+        c.beginPath();
+        for (let i = 0; i < 10; i++) { const r = i % 2 ? 4 : 9, a = -Math.PI / 2 + (i * Math.PI) / 5; c.lineTo(165 + (hit ? (cyc - 1.15) * 60 : 0) + Math.cos(a) * r, sy + 8 + Math.sin(a) * r); }
+        c.fill();
+        label(c, '#ffb3cf', 'THREE.JS + CANNON-ES • CHAIN REACTION');
+      }
+
+      // 7. TERRACE BLOOM：水流沿梯田逐層變綠
+      function drawTerrace(t) {
+        const c = ctx['terrace-bloom'];
+        c.fillStyle = vgrad(c, ['#ffd6a0', '#bfe6e0', '#8fc7b8']);
+        c.fillRect(0, 0, W, H);
+        const p = (t % 8) / 8;
+        for (let i = 0; i < 5; i++) {
+          const y = 60 + i * 20, x0 = 30 + i * 18;
+          const green = p * 5 > 4 - i;
+          rect(c, '#8a7258', x0 - 4, y + 12, W - x0 + 4, 8);
+          rect(c, green ? '#6fcf5b' : '#b8a27a', x0, y, W - x0, 12);
+          if (green) for (let x = x0 + 6; x < W; x += 12) rect(c, '#3f9a45', x, y + 2 + Math.sin(t * 3 + x) * 1, 3, 6);
+        }
+        // 竹管與水流
+        rect(c, '#9ec46a', 20, 30, 6, 130);
+        const fy = 30 + ((t * 60) % 120);
+        rect(c, '#7fe3ff', 21, fy, 4, 10);
+        rect(c, '#7a8a96', 10, 20, 30, 12);
+        for (let i = 0; i < 6; i++) rect(c, '#fff6a0', 100 + i * 34 + Math.sin(t * 2 + i) * 6, 40 + Math.cos(t * 1.5 + i) * 10, 2, 2);
+        label(c, '#245a3e', `THREE.JS 3D • RESTORATION ${Math.round(p * 100)}%`);
+      }
+
+      // 8. FROSTHOLD：體素凍原、雪、營火
+      function drawFrost(t) {
+        const c = ctx['frosthold'];
+        const night = Math.floor(t / 4) % 2 === 1;
+        c.fillStyle = vgrad(c, night ? ['#0b1030', '#2a2f5e'] : ['#9fc4e8', '#e6f2ff']);
+        c.fillRect(0, 0, W, H);
+        const heights = [7, 7, 8, 8, 9, 8, 7, 7, 6, 6, 7, 8, 8, 7, 6, 6, 7, 7, 8, 9];
+        heights.forEach((h, i) => {
+          for (let j = 0; j < h; j++) {
+            const y = H - 16 * (j + 1) + 64;
+            rect(c, j === h - 1 ? (night ? '#c7d2ee' : '#f4f8ff') : '#7d8aa3', i * 16, y, 16, 16);
+            if (j === h - 1) rect(c, night ? '#a9b6d6' : '#dbe6f7', i * 16, y + 12, 16, 4);
+          }
+        });
+        // 雲杉
+        rect(c, '#5a3b25', 52, 30, 8, 26);
+        for (let k = 0; k < 3; k++) rect(c, '#2f5a4a', 40 + k * 4, 6 + k * 10, 32 - k * 8 + 0, 12);
+        // 營火
+        rect(c, '#6b4a2b', 196, 50, 20, 6);
+        const f = Math.sin(t * 14) * 2;
+        rect(c, '#ff7a2f', 200, 38 - f, 12, 12 + f); rect(c, '#ffd34f', 203, 42 - f, 6, 8 + f);
+        if (night) { const g = c.createRadialGradient(206, 46, 4, 206, 46, 60); g.addColorStop(0, 'rgba(255,150,60,0.35)'); g.addColorStop(1, 'rgba(255,150,60,0)'); c.fillStyle = g; c.fillRect(140, 0, 140, 110); }
+        // 雪
+        for (let i = 0; i < 40; i++) rect(c, '#ffffff', (i * 37 + t * (10 + (i % 5) * 4)) % W, (i * 23 + t * (24 + (i % 3) * 10)) % 150, 2, 2);
+        rect(c, 'rgba(8,12,30,0.55)', 0, 156, W, 24);
+        label(c, night ? '#c7b6ff' : '#e9f7ff', night ? 'NIGHT • WARMTH DROPPING' : 'THREE.JS 3D • VOXEL TUNDRA SURVIVAL');
+      }
+
+      const draws = [drawTide, drawTidePixi, drawLantern, drawLanternPixi, drawSky, drawTopple, drawTerrace, drawFrost];
+      const t0 = performance.now();
+      function tick(now) {
+        const t = (now - t0) / 1000;
+        for (const d of draws) d(t);
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    </script>
+  </body>
+</html>
